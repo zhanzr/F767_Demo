@@ -11,7 +11,6 @@
 #define CORE_PORTME_H
 
 #define ITERATIONS	20000
-#define CLOCKS_PER_SEC	1000
 /************************/
 /* Data types and settings */
 /************************/

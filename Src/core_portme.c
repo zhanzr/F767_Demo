@@ -11,6 +11,7 @@
 #include "coremark.h"
 
 #include "main.h"
+#include "stm32f7xx_hal.h"
 
 extern int original_main(void);
 extern volatile uint16_t g_ADCBuf[2];
@@ -126,8 +127,15 @@ void portable_fini(core_portable *p)
 	
   while (1)
   {
-		printf("ADC:%u %f\n", g_ADCBuf[0], (g_ADCBuf[1]*3.3)/4095);
-		HAL_Delay(10000);
-  }
+		float g_DieTemp = (g_ADCBuf[0]*330*4/4095.0 - 76*4) + 25;			
+		
+		printf("%.1f 'C Vref:%u mV\n", g_DieTemp, (g_ADCBuf[1]*3300)/4095);
+		HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+		HAL_Delay(3000);
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		HAL_Delay(3000);
+		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+		HAL_Delay(3000); 
+	}
 }
 
