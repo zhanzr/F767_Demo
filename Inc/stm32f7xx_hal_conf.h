@@ -5,7 +5,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT(c) 2018 STMicroelectronics</center></h2>
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -91,6 +91,7 @@
 /* #define HAL_MDIOS_MODULE_ENABLED   */
 /* #define HAL_SMBUS_MODULE_ENABLED   */
 /* #define HAL_MMC_MODULE_ENABLED   */
+/* #define HAL_EXTI_MODULE_ENABLED   */
 #define HAL_GPIO_MODULE_ENABLED
 #define HAL_DMA_MODULE_ENABLED
 #define HAL_RCC_MODULE_ENABLED
@@ -160,7 +161,7 @@
 #define  VDD_VALUE                    ((uint32_t)3300U) /*!< Value of VDD in mv */
 #define  TICK_INT_PRIORITY            ((uint32_t)0U) /*!< tick interrupt priority */
 #define  USE_RTOS                     0U
-#define  PREFETCH_ENABLE              0U
+#define  PREFETCH_ENABLE              1U
 #define  ART_ACCLERATOR_ENABLE        0U /* To enable instruction cache and prefetch */
 
 /* ########################## Assert Selection ############################## */
@@ -168,7 +169,7 @@
   * @brief Uncomment the line below to expanse the "assert_param" macro in the 
   *        HAL drivers code
   */
-/* #define USE_FULL_ASSERT    1 */
+/* #define USE_FULL_ASSERT    1U */
 
 /* ################## Ethernet peripheral configuration ##################### */
 
@@ -243,6 +244,10 @@
 #ifdef HAL_RCC_MODULE_ENABLED
   #include "stm32f7xx_hal_rcc.h"
 #endif /* HAL_RCC_MODULE_ENABLED */
+
+#ifdef HAL_EXTI_MODULE_ENABLED
+  #include "stm32f7xx_hal_exti.h"
+#endif /* HAL_EXTI_MODULE_ENABLED */
 
 #ifdef HAL_GPIO_MODULE_ENABLED
   #include "stm32f7xx_hal_gpio.h"

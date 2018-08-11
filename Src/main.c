@@ -1,7 +1,8 @@
+
 /**
   ******************************************************************************
-  * File Name          : main.c
-  * Description        : Main program body
+  * @file           : main.c
+  * @brief          : Main program body
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
@@ -9,7 +10,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2017 STMicroelectronics
+  * COPYRIGHT(c) 2018 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -65,9 +66,14 @@ void SystemClock_Config(void);
 volatile uint16_t g_ADCBuf[2];
 /* USER CODE END 0 */
 
-int original_main(void)
+/**
+  * @brief  The application entry point.
+  *
+  * @retval None
+  */
+void original_main(void)
+//int main(void)
 {
-
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -98,7 +104,6 @@ int original_main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_ADC1_Init();
-
   /* USER CODE BEGIN 2 */
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)g_ADCBuf, sizeof(g_ADCBuf)/sizeof(g_ADCBuf[0]));
 	printf("Clock:%u Hz\n", SystemCoreClock);
@@ -110,17 +115,19 @@ int original_main(void)
 //  {
 //		printf("ADC:%u %f\n", g_ADCBuf[0], (g_ADCBuf[1]*3.3)/4095);
 //		HAL_Delay(10000);
-//  /* USER CODE END WHILE */
+  /* USER CODE END WHILE */
 
-//  /* USER CODE BEGIN 3 */
+  /* USER CODE BEGIN 3 */
 
 //  }
   /* USER CODE END 3 */
 
 }
 
-/** System Clock Configuration
-*/
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
 void SystemClock_Config(void)
 {
 
@@ -187,45 +194,43 @@ void SystemClock_Config(void)
 
 /**
   * @brief  This function is executed in case of error occurrence.
-  * @param  None
+  * @param  file: The file name as string.
+  * @param  line: The line in file as a number.
   * @retval None
   */
-void _Error_Handler(char * file, int line)
+void _Error_Handler(char *file, int line)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   while(1) 
   {
   }
-  /* USER CODE END Error_Handler_Debug */ 
+  /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
-
+#ifdef  USE_FULL_ASSERT
 /**
-   * @brief Reports the name of the source file and the source line number
-   * where the assert_param error has occurred.
-   * @param file: pointer to the source file name
-   * @param line: assert_param error line source number
-   * @retval None
-   */
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
 void assert_failed(uint8_t* file, uint32_t line)
-{
+{ 
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
-
 }
-
-#endif
-
-/**
-  * @}
-  */ 
+#endif /* USE_FULL_ASSERT */
 
 /**
   * @}
-*/ 
+  */
+
+/**
+  * @}
+  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
