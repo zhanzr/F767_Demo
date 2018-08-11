@@ -1,41 +1,3 @@
-
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  ** This notice applies to any and all portions of this file
-  * that are not between comment pairs USER CODE BEGIN and
-  * USER CODE END. Other portions of this file, whether 
-  * inserted by the user or by software development tools
-  * are owned by their respective copyright owners.
-  *
-  * COPYRIGHT(c) 2018 STMicroelectronics
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
-  */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f7xx_hal.h"
@@ -44,6 +6,7 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
+#include "cmsis_os2.h"
 
 /* USER CODE END Includes */
 
@@ -51,6 +14,7 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+#define BLINK_DELAY_MS	500
 
 /* USER CODE END PV */
 
@@ -59,11 +23,53 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+/*----------------------------------------------------------------------------
+  Timer callback function. Toggle the LED associated with the timer
+ *---------------------------------------------------------------------------*/
+void timer_cb(void* param)
+{
+	printf("%s\n", __func__);
 
+//	switch( (uint32_t) param)
+//	{
+//		case 1:
+//			LED_Toggle(1);
+//		break;
+
+//		case 2:
+//			LED_Toggle(2);
+//		break;
+
+//		default:
+//		break;
+//	}
+}
+
+void Thread (void *argument) {
+  while (1) {
+    	printf("%s %u\n", __func__, osKernelGetTickCount());
+			osDelay(5000);
+  }
+}
+
+/*----- Periodic Timer Example -----*/
+static void Timer2_Callback (void const *arg);                  // prototype for timer callback function
+ 
+osTimerId_t tim_id2;                                            // timer id
+static uint32_t  exec2;                                         // argument for the timer call back function
+ 
+// Periodic Timer Example
+static void Timer2_Callback (void const *arg) {
+	printf("%s\n", __func__);
+}
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
 volatile uint16_t g_ADCBuf[2];
+
+void Thread (void *argument);                                 // thread function
+osThreadId_t tid_Thread;                                      // thread id
+
 /* USER CODE END 0 */
 
 /**
@@ -71,10 +77,10 @@ volatile uint16_t g_ADCBuf[2];
   *
   * @retval None
   */
-void original_main(void)
-//int main(void)
+int main(void)
 {
   /* USER CODE BEGIN 1 */
+  osStatus_t status;                                            // function return status
 
   /* USER CODE END 1 */
 
@@ -106,20 +112,37 @@ void original_main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)g_ADCBuf, sizeof(g_ADCBuf)/sizeof(g_ADCBuf[0]));
-	printf("Clock:%u Hz\n", SystemCoreClock);
-  /* USER CODE END 2 */
+	printf("RTX5 Test:%u Hz\n", SystemCoreClock);
+
+	osKernelInitialize();                    // initialize CMSIS-RTOS
+		
+	tid_Thread = osThreadNew (Thread, NULL, NULL);
+
+// Create periodic timer
+  exec2 = 2;
+  tim_id2 = osTimerNew((osTimerFunc_t)&Timer2_Callback, osTimerPeriodic, &exec2, NULL);
+  if (tim_id2 != NULL) {    // Periodic timer created
+    // start timer with periodic  interval
+    status = osTimerStart (tim_id2, BLINK_DELAY_MS);            
+    if (status != osOK) {
+    }
+    printf("osTimerStart:%X\n", status);
+  }
+	
+	osKernelStart ();  
+	/* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-//  while (1)
-//  {
-//		printf("ADC:%u %f\n", g_ADCBuf[0], (g_ADCBuf[1]*3.3)/4095);
-//		HAL_Delay(10000);
+  while (1)
+  {
+		printf("ADC:%u %f\n", g_ADCBuf[0], (g_ADCBuf[1]*3.3)/4095);
+		HAL_Delay(10000);
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
 
-//  }
+  }
   /* USER CODE END 3 */
 
 }
