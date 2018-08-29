@@ -1,11 +1,16 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f7xx_hal.h"
-#include "adc.h"
 #include "dma.h"
 #include "gpio.h"
 
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdint.h>
+//#define __USE_ANSI_EXAMPLE_RAND
+#include <stdlib.h>
+
 #include "cmsis_os2.h"
 
 /* USER CODE END Includes */
@@ -29,20 +34,6 @@ void SystemClock_Config(void);
 void timer_cb(void* param)
 {
 	printf("%s\n", __func__);
-
-//	switch( (uint32_t) param)
-//	{
-//		case 1:
-//			LED_Toggle(1);
-//		break;
-
-//		case 2:
-//			LED_Toggle(2);
-//		break;
-
-//		default:
-//		break;
-//	}
 }
 
 void Thread (void *argument) {
@@ -70,6 +61,40 @@ volatile uint16_t g_ADCBuf[2];
 void Thread (void *argument);                                 // thread function
 osThreadId_t tid_Thread;                                      // thread id
 
+#define	RNG_TEST_NUM	10
+
+bool test_stdlib_rand(void)
+{
+	__IO int i_Random = 1;
+	__IO int i_RandomLast = 0;
+	volatile uint32_t i;
+
+	bool ret = true;
+	
+	for(i = 0; i < RNG_TEST_NUM; i++)
+	{
+		/* Generate random number */
+		i_Random = rand();
+		printf("rn = %08X\t", i_Random);
+
+		/* Check number is not same as last one produced */
+		if (i_Random != i_RandomLast)
+		{
+			i_RandomLast = i_Random;
+		}
+		else 
+		{
+			/* Test failed */
+			ret = false;
+//			break;
+		}
+	}
+
+	printf("\r\n");
+	
+	return ret;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -81,44 +106,32 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
   osStatus_t status;                                            // function return status
-
   /* USER CODE END 1 */
-
   /* Enable I-Cache-------------------------------------------------------------*/
   SCB_EnableICache();
-
   /* Enable D-Cache-------------------------------------------------------------*/
   SCB_EnableDCache();
-
   /* MCU Configuration----------------------------------------------------------*/
-
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
-
   /* Configure the system clock */
   SystemClock_Config();
-
   /* USER CODE BEGIN SysInit */
-
   /* USER CODE END SysInit */
-
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)g_ADCBuf, sizeof(g_ADCBuf)/sizeof(g_ADCBuf[0]));
-	printf("RTX5 Test:%u Hz\n", SystemCoreClock);
+
+	test_stdlib_rand();
 
 	osKernelInitialize();                    // initialize CMSIS-RTOS
 		
 	tid_Thread = osThreadNew (Thread, NULL, NULL);
 
-// Create periodic timer
+	// Create periodic timer
   exec2 = 2;
   tim_id2 = osTimerNew((osTimerFunc_t)&Timer2_Callback, osTimerPeriodic, &exec2, NULL);
   if (tim_id2 != NULL) {    // Periodic timer created
@@ -126,7 +139,7 @@ int main(void)
     status = osTimerStart (tim_id2, BLINK_DELAY_MS);            
     if (status != osOK) {
     }
-    printf("osTimerStart:%X\n", status);
+    printf("osTimerStart status:%X\n", status);
   }
 	
 	osKernelStart ();  
@@ -136,15 +149,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		printf("ADC:%u %f\n", g_ADCBuf[0], (g_ADCBuf[1]*3.3)/4095);
-		HAL_Delay(10000);
   /* USER CODE END WHILE */
-
   /* USER CODE BEGIN 3 */
-
   }
   /* USER CODE END 3 */
-
 }
 
 /**

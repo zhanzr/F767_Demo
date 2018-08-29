@@ -4,7 +4,7 @@
  *      *** Do not modify ! ***
  *
  * Project: 'f767_cm' 
- * Target:  'f767_cm' 
+ * Target:  'f767_rtx5_timer' 
  */
 
 #ifndef RTE_COMPONENTS_H
