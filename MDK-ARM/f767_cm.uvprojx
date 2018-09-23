@@ -337,7 +337,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F767xx,HAVE_CONFIG_H</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;../Drivers/STM32F7xx_HAL_Driver/Inc;../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F7xx/Include;../Drivers/CMSIS/Include;..\coremark_v1.0;..\coremark_v1.0\f767;H:\Keil_v5\ARM\PACK\Keil\Jansson\1.0.0\src</IncludePath>
+              <IncludePath>../Inc;../Drivers/STM32F7xx_HAL_Driver/Inc;../Drivers/STM32F7xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F7xx/Include;../Drivers/CMSIS/Include;..\coremark_v1.0;..\coremark_v1.0\f767;H:\Keil_v5\ARM\PACK\Keil\Jansson\1.0.0\src;H:\Keil_v5\ARM\PACK\MDK-Packs\cJSON\1.0.0</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -563,6 +563,21 @@
               <FileName>hashtable_seed.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\hashtable_seed.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>cJSON</GroupName>
+          <Files>
+            <File>
+              <FileName>cJSON.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>H:\Keil_v5\ARM\PACK\MDK-Packs\cJSON\1.0.0\cJSON.c</FilePath>
+            </File>
+            <File>
+              <FileName>cJSON_Utils.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>H:\Keil_v5\ARM\PACK\MDK-Packs\cJSON\1.0.0\cJSON_Utils.c</FilePath>
             </File>
           </Files>
         </Group>
