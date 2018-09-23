@@ -8,10 +8,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
-//#define __USE_ANSI_EXAMPLE_RAND
+
 #include <stdlib.h>
 
-#include "cmsis_os2.h"
+#include "jansson.h"  
 
 /* USER CODE END Includes */
 
@@ -19,7 +19,6 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-#define BLINK_DELAY_MS	500
 
 /* USER CODE END PV */
 
@@ -28,71 +27,45 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-/*----------------------------------------------------------------------------
-  Timer callback function. Toggle the LED associated with the timer
- *---------------------------------------------------------------------------*/
-void timer_cb(void* param)
-{
-	printf("%s\n", __func__);
-}
 
-void Thread (void *argument) {
-  while (1) {
-    	printf("%s %u\n", __func__, osKernelGetTickCount());
-			osDelay(5000);
-  }
-}
-
-/*----- Periodic Timer Example -----*/
-static void Timer2_Callback (void const *arg);                  // prototype for timer callback function
- 
-osTimerId_t tim_id2;                                            // timer id
-static uint32_t  exec2;                                         // argument for the timer call back function
- 
-// Periodic Timer Example
-static void Timer2_Callback (void const *arg) {
-	printf("%s\n", __func__);
-}
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-volatile uint16_t g_ADCBuf[2];
-
-void Thread (void *argument);                                 // thread function
-osThreadId_t tid_Thread;                                      // thread id
-
-#define	RNG_TEST_NUM	10
-
-bool test_stdlib_rand(void)
+void add_2array_to_json( json_t* obj, const char* name, const int*
+marr, size_t dim1, size_t dim2 )
 {
-	__IO int i_Random = 1;
-	__IO int i_RandomLast = 0;
-	volatile uint32_t i;
+    size_t i, j;
+    json_t* jarr1 = json_array();
 
-	bool ret = true;
-	
-	for(i = 0; i < RNG_TEST_NUM; i++)
-	{
-		/* Generate random number */
-		i_Random = rand();
-		printf("rn = %08X\t", i_Random);
+    for( i=0; i<dim1; ++i ) {
+        json_t* jarr2 = json_array();
 
-		/* Check number is not same as last one produced */
-		if (i_Random != i_RandomLast)
-		{
-			i_RandomLast = i_Random;
-		}
-		else 
-		{
-			/* Test failed */
-			ret = false;
-//			break;
-		}
-	}
+        for( j=0; j<dim2; ++j ) {
+            int val = marr[ i*dim2 + j ];
+            json_t* jval = json_integer( val );
+            json_array_append_new( jarr2, jval );
+        }
+        json_array_append_new( jarr1, jarr2 );
+    }
+    json_object_set_new( obj, name, jarr1 );
+    return;
+}
 
-	printf("\r\n");
-	
-	return ret;
+void test_jansson(void)
+{
+	json_t* jdata;
+	char* s;
+	int arr1[2][3] = { {1,2,3}, {4,5,6} };
+	int arr2[4][4] = { {1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16} };
+
+	jdata = json_object();
+	add_2array_to_json( jdata, "arr1", &arr1[0][0], 2, 3 );
+	add_2array_to_json( jdata, "arr2", &arr2[0][0], 4, 4 );
+
+	s = json_dumps( jdata, 0 );
+	puts( s );
+	free( s );
+	json_decref( jdata );
 }
 
 /* USER CODE END 0 */
@@ -105,7 +78,6 @@ bool test_stdlib_rand(void)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  osStatus_t status;                                            // function return status
   /* USER CODE END 1 */
   /* Enable I-Cache-------------------------------------------------------------*/
   SCB_EnableICache();
@@ -125,24 +97,11 @@ int main(void)
   MX_DMA_Init();
   /* USER CODE BEGIN 2 */
 
-	test_stdlib_rand();
-
-	osKernelInitialize();                    // initialize CMSIS-RTOS
-		
-	tid_Thread = osThreadNew (Thread, NULL, NULL);
-
-	// Create periodic timer
-  exec2 = 2;
-  tim_id2 = osTimerNew((osTimerFunc_t)&Timer2_Callback, osTimerPeriodic, &exec2, NULL);
-  if (tim_id2 != NULL) {    // Periodic timer created
-    // start timer with periodic  interval
-    status = osTimerStart (tim_id2, BLINK_DELAY_MS);            
-    if (status != osOK) {
-    }
-    printf("osTimerStart status:%X\n", status);
-  }
+	printf("%u MHz Test Jansson\n",
+	SystemCoreClock);
 	
-	osKernelStart ();  
+	test_jansson();
+	
 	/* USER CODE END 2 */
 
   /* Infinite loop */
