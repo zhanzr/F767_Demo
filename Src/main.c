@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <stdlib.h>
 
@@ -31,46 +32,7 @@ void SystemClock_Config(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-void add_2array_to_json( json_t* obj, const char* name, const int*
-marr, size_t dim1, size_t dim2 )
-{
-    size_t i, j;
-    json_t* jarr1 = json_array();
-
-    for( i=0; i<dim1; ++i ) {
-        json_t* jarr2 = json_array();
-
-        for( j=0; j<dim2; ++j ) {
-            int val = marr[ i*dim2 + j ];
-            json_t* jval = json_integer( val );
-            json_array_append_new( jarr2, jval );
-        }
-        json_array_append_new( jarr1, jarr2 );
-    }
-    json_object_set_new( obj, name, jarr1 );
-    return;
-}
-
-void test_jansson(void)
-{
-	json_t* jdata;
-	char* s;
-	int arr1[2][3] = { {1,2,3}, {4,5,6} };
-	int arr2[4][4] = { {1,2,3,4}, {5,6,7,8}, {9,10,11,12}, {13,14,15,16} };
-
-	jdata = json_object();
-	add_2array_to_json( jdata, "arr1", &arr1[0][0], 2, 3 );
-	add_2array_to_json( jdata, "arr2", &arr2[0][0], 4, 4 );
-
-	s = json_dumps( jdata, 0 );
-	puts( s );
-	free( s );
-	json_decref( jdata );
-}
-
-	
-/* Used by some code below as an example datatype. */
-struct record
+typedef struct str_poi_record
 {
     const char *precision;
     double lat;
@@ -80,8 +42,188 @@ struct record
     const char *state;
     const char *zip;
     const char *country;
+}poi_record;
+
+/* Our "days of the week" array: */
+const char *str_weekdays[7] =
+{
+		"Sunday",
+		"Monday",
+		"Tuesday",
+		"Wednesday",
+		"Thursday",
+		"Friday",
+		"Saturday"
 };
 
+/* Our matrix: */
+const int numbers[3][3] =
+{
+		{0, -1, 0},
+		{1, 0, 0},
+		{0 ,0, 1}
+};
+
+/* Our "gallery" item: */
+const int ids[4] = { 116, 943, 234, 38793 };
+/* Our array of "records": */
+const poi_record fields[2] =
+{
+		{
+				"zip",
+				37.7668,
+				-1.223959e+2,
+				"",
+				"SAN FRANCISCO",
+				"CA",
+				"94107",
+				"US"
+		},
+		{
+				"zip",
+				37.371991,
+				-1.22026e+2,
+				"",
+				"SUNNYVALE",
+				"CA",
+				"94085",
+				"US"
+		}
+};
+
+void test_jansson(void)
+{
+	printf("Jansson Version:%s\n", JANSSON_VERSION);
+	
+	json_t* root;		
+	char* str_dump;	
+	
+	//Object Video Creating Test
+	{
+		json_t* fmt;
+    root = json_object();
+		json_object_set_new(root, "name", json_string("Jack (\"Bee\") Nimble"));
+		json_object_set_new(root, "format", fmt=json_object());
+		json_object_set_new(fmt,  "type", json_string("rect"));
+    json_object_set_new(fmt, "width", json_integer(1920));
+    json_object_set_new(fmt, "height", json_integer(1080));
+    json_object_set_new(fmt, "interlace", json_boolean(false));
+    json_object_set_new(fmt, "frame rate", json_integer(24));		
+		
+		str_dump = json_dumps( root, 0 );
+		printf( str_dump );
+		printf("\n");
+		free( str_dump );
+		json_decref( root );		
+	}
+	
+	//1-Dim Array of String Test
+	{	
+    root = json_array();
+
+    for(size_t i=0; i<7; ++i ) 
+		{       
+			json_array_append_new( root, json_string(str_weekdays[i]) );
+    }
+		
+		str_dump = json_dumps( root, 0 );
+		printf( str_dump );
+		printf("\n");
+		free( str_dump );
+		json_decref( root );		
+	}
+	
+	//2-Dim Array of Integer Test
+	{	
+    root = json_array();
+
+    for(size_t i=0; i<3; ++i ) 
+		{  
+			json_t* jarr2 = json_array();
+			for(size_t j=0; j<3; ++j ) 
+			{
+				json_array_append_new( jarr2, json_integer((json_int_t)numbers[i][j]));
+			}
+			json_array_append_new( root, jarr2);
+    }
+		
+		str_dump = json_dumps( root, 0 );
+		printf( str_dump );
+		printf("\n");
+		free( str_dump );
+		json_decref( root );		
+	}
+	
+	//Object Gallery Creating Test
+	{
+		json_t* img;
+		json_t* thm;
+		
+    root = json_object();
+		json_object_set_new(root, "Image", img=json_object());
+		json_object_set_new(img, "Width", json_integer(800));
+		json_object_set_new(img, "Height", json_integer(600));
+		json_object_set_new(img,  "Title", json_string("View from 15th Floor"));
+    json_object_set_new(img, "Thumbnail", thm=json_object());
+    json_object_set_new(thm, "Url", json_string("http:/*www.example.com/image/481989943"));
+		json_object_set_new(thm, "Height", json_integer(125));
+		json_object_set_new(thm, "Width", json_string("100"));
+		
+		json_t* jarr = json_array();		
+		for(size_t i=0; i<sizeof(ids)/sizeof(ids[0]); ++i)
+		{
+			json_array_append_new( jarr, json_integer((json_int_t)ids[i]));
+		}
+    json_object_set_new(img, "IDs", jarr);		
+		
+		str_dump = json_dumps( root, 0 );
+		printf( str_dump );
+		printf("\n");
+		free( str_dump );
+		json_decref( root );				
+	}
+	
+	//Array of "records" Test
+	{
+    root = json_array();
+		
+    for (size_t i = 0; i < 2; i++)
+    {
+				json_t* item = json_object();	
+			
+        json_object_set_new(item, "precision", json_string(fields[i].precision));
+        json_object_set_new(item, "Latitude", json_real(fields[i].lat));
+        json_object_set_new(item, "Longitude", json_real(fields[i].lon));
+        json_object_set_new(item, "Address", json_string(fields[i].address));
+        json_object_set_new(item, "City", json_string(fields[i].city));
+        json_object_set_new(item, "State", json_string(fields[i].state));
+        json_object_set_new(item, "Zip", json_string(fields[i].zip));
+        json_object_set_new(item, "Country", json_string(fields[i].country));
+			
+				json_array_append_new( root, item);			
+    }
+		
+		str_dump = json_dumps( root, 0 );
+		printf( str_dump );
+		printf("\n");
+		free( str_dump );
+		json_decref( root );				
+	}
+	
+	//null Test
+	{
+		root = json_object();
+    volatile double zero = 0.0;
+		
+		json_object_set_new(root, "number", json_null());
+		
+		str_dump = json_dumps( root, 0 );
+		printf( str_dump );
+		printf("\n");
+		free( str_dump );
+		json_decref( root );				
+	}
+}
 
 /* Create a bunch of objects as demonstration. */
 static int print_preallocated(cJSON *root)
@@ -160,50 +302,6 @@ static void create_objects(void)
     cJSON *fld = NULL;
     int i = 0;
 
-    /* Our "days of the week" array: */
-    const char *strings[7] =
-    {
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday"
-    };
-    /* Our matrix: */
-    int numbers[3][3] =
-    {
-        {0, -1, 0},
-        {1, 0, 0},
-        {0 ,0, 1}
-    };
-    /* Our "gallery" item: */
-    int ids[4] = { 116, 943, 234, 38793 };
-    /* Our array of "records": */
-    struct record fields[2] =
-    {
-        {
-            "zip",
-            37.7668,
-            -1.223959e+2,
-            "",
-            "SAN FRANCISCO",
-            "CA",
-            "94107",
-            "US"
-        },
-        {
-            "zip",
-            37.371991,
-            -1.22026e+2,
-            "",
-            "SUNNYVALE",
-            "CA",
-            "94085",
-            "US"
-        }
-    };
     volatile double zero = 0.0;
 
     /* Here we construct some JSON standards, from the JSON site. */
@@ -226,7 +324,7 @@ static void create_objects(void)
     cJSON_Delete(root);
 
     /* Our "days of the week" array: */
-    root = cJSON_CreateStringArray(strings, 7);
+    root = cJSON_CreateStringArray(str_weekdays, 7);
 
     if (print_preallocated(root) != 0) {
         cJSON_Delete(root);
@@ -302,7 +400,7 @@ static void create_objects(void)
 
 void 	test_cJSON(void)
 {
-	printf("Version: %s\n", cJSON_Version());
+	printf("cJSON Version: %s\n", cJSON_Version());
 
 	/* Now some samplecode for building objects concisely: */
 	create_objects();		
