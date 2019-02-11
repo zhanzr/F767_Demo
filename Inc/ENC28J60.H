@@ -1,6 +1,8 @@
 #ifndef __ENC28J60_H
 #define __ENC28J60_H
 
+#include <stdint.h>
+
 // ENC28J60 Control Registers
 // Control register definitions are a combination of address,
 // bank number, and Ethernet/MAC/PHY indicator bits.
@@ -29,10 +31,7 @@
 #define ERXSTH           (0x09|0x00)
 #define ERXNDL           (0x0A|0x00)
 #define ERXNDH           (0x0B|0x00)
-//ERXWRPTH:ERXWRPTL 寄存器定义硬件向FIFO 中
-    //的哪个位置写入其接收到的字节。 指针是只读的，在成
-    //功接收到一个数据包后，硬件会自动更新指针。 指针可
-    //用于判断FIFO 内剩余空间的大小。
+
 #define ERXRDPTL         (0x0C|0x00)
 #define ERXRDPTH         (0x0D|0x00)
 #define ERXWRPTL         (0x0E|0x00)
@@ -238,26 +237,15 @@
 #define TXSTOP_INIT      0x1FFF
 //
 // max frame length which the conroller will accept:
-#define        MAX_FRAMELEN        1500        // (note: maximum ethernet frame length would be 1518)
-//#define MAX_FRAMELEN     600
+// (note: maximum ethernet frame length would be 1518)
+#define        MAX_FRAMELEN        1500        
 
 #define ENC28J60_CSH()	HAL_GPIO_WritePin(ENC28_CS_GPIO_Port, ENC28_CS_Pin, GPIO_PIN_SET)
 #define ENC28J60_CSL()	HAL_GPIO_WritePin(ENC28_CS_GPIO_Port, ENC28_CS_Pin, GPIO_PIN_RESET)
 
-//SPI1初始化
-//void	ENC28J60_Init(void);
-unsigned char enc28j60ReadOp(unsigned char op, unsigned char address);
-void 	enc28j60WriteOp(unsigned char op, unsigned char address, unsigned char data);
-void 	enc28j60ReadBuffer(unsigned int len, unsigned char* data);
-void 	enc28j60WriteBuffer(unsigned int len, unsigned char* data);
-void 	enc28j60SetBank(unsigned char address);
-unsigned char enc28j60Read(unsigned char address);
-void 	enc28j60Write(unsigned char address, unsigned char data);
-void 	enc28j60PhyWrite(unsigned char address, unsigned int data);
-void 	enc28j60clkout(unsigned char clk);
-void 	enc28j60Init(unsigned char* macaddr);
-unsigned char enc28j60getrev(void);
-void 	enc28j60PacketSend(unsigned int len, unsigned char* packet);
-unsigned int enc28j60PacketReceive(unsigned int maxlen, unsigned char* packet);
+void 	enc28j60Init(const uint8_t* macaddr);
+uint8_t enc28j60getrev(void);
+void 	enc28j60PacketSend(unsigned int len, uint8_t* packet);
+unsigned int enc28j60PacketReceive(unsigned int maxlen, uint8_t* packet);
 
 #endif

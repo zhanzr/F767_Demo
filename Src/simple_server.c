@@ -1,245 +1,230 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
+
+#include "stm32f7xx_hal.h"
 
 #include "enc28j60.h"
 #include "ip_arp_udp_tcp.h"
 #include "net.h"
-#include "simple_server.h"
 
 extern void LD2_ON(void);
 extern void LD2_OFF(void);
-extern volatile uint16_t g_ADCBuf[2];
+extern volatile uint16_t g_adc_buf[2];
 
-// please modify the following two lines. mac and ip have to be unique
-// in your local area network. You can not have the same numbers in
-// two devices:
-static unsigned char myip[4] = {192,168,32,33};
-extern unsigned char mymac[6];
+extern const uint8_t g_ip_addr[4];
+extern const uint8_t g_mac_addr[6];
 
-// base url (you can put a DNS name instead of an IP addr. if you have
-// a DNS server (baseurl must end in "/"):
-static char baseurl[]="http://192.168.1.1/";
-static unsigned int mywwwport = 80; // listen port for tcp/www (max range 1-254)
-// or on a different port:
-//static char baseurl[]="http://10.0.0.24:88/";
-//static unsigned int mywwwport =88; // listen port for tcp/www (max range 1-254)
-//
-static unsigned int myudpport =1200; // listen port for udp
-// how did I get the mac addr? Translate the first 3 numbers into ascii is: TUX
+#define TEST_UDP_PORT	((uint16_t)1200)
+#define BUFFER_SIZE 1500
 
-#define BUFFER_SIZE 1500//400
-static unsigned char buf[BUFFER_SIZE+1];
+static uint8_t buf[BUFFER_SIZE+1];
 
-// the password string (only the first 5 char checked), (only a-z,0-9,_ characters):
-static char password[]="SZIII"; // must not be longer than 9 char
-
-// 
-unsigned char verify_password(char *str)
-{
-	// the first characters of the received string are
-	// a simple password/cookie:
-	if (strncmp(password,str,5)==0)
-	{
-	    return(1);
-	}
-	return(0);
-}
+static uint8_t g_led_state;
 
 // takes a string of the form password/commandNumber and analyse it
 // return values: -1 invalid password, otherwise command number
 //                -2 no command given but password valid
-signed char analyse_get_url(char *str)
-{
-	unsigned char i=0;
-	if (verify_password(str)==0)
-	{
-		return(-1);
-	}
+signed char analyse_get_url(char *str){
+	uint8_t i=0;
+
 	// find first "/"
 	// passw not longer than 9 char:
 	while(*str && i<10 && *str >',' && *str<'{')
 	{
-        if (*str=='/')
+		if (*str=='/')
 		{
-            str++;
-            break;
-        }
-        i++;
-        str++;
+			str++;
+			break;
+		}
+		i++;
+		str++;
 	}
 	if (*str < 0x3a && *str > 0x2f)
 	{
-        // is a ASCII number, return it
-        return(*str-0x30);
+		// is a ASCII number, return it
+		return(*str-0x30);
 	}
 	return(-2);
 }
 
 // prepare the webpage by writing the data to the tcp send buffer
-unsigned int print_webpage(unsigned char *buf,unsigned char on_off)
-	{
-    unsigned int plen;
-    plen=fill_tcp_data_p(buf,0,("HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nPragma: no-cache\r\n\r\n"));
-    plen=fill_tcp_data_p(buf,plen,("<center><p>DS1 LED灯输出: "));
-    if (on_off)
-	{
-        plen=fill_tcp_data_p(buf,plen,("<font color=\"#00FF00\"> 亮</font>"));
-    }
-	else
-	{
-        plen=fill_tcp_data_p(buf,plen,("灭"));
-    }
+uint32_t print_webpage(uint8_t *buf,uint8_t on_off)
+{
+	uint32_t plen;
+	uint8_t tmp_compose_buf[64];
+			
+	plen=fill_tcp_data_p(buf,0,("HTTP/1.0 200 OK\r\nContent-Type: text/html\r\nPragma: no-cache\r\n\r\n"));
+	
+	plen=fill_tcp_data_p(buf,plen,("<!DOCTYPE html>\r\n<html lang=\"en\">\r\n"));
+	
+	sprintf((char*)tmp_compose_buf, "<title>Server[%s]</title>\r\n", __TIME__);
+	plen=fill_tcp_data(buf,plen,(const char*)tmp_compose_buf);		
+	
+	plen=fill_tcp_data_p(buf,plen,("<body>\r\n"));
+	plen=fill_tcp_data_p(buf,plen,("<center>\r\n"));
+	
+	plen=fill_tcp_data_p(buf,plen,("<p>Tempeature and IntRef: "));
+	sprintf((char*)tmp_compose_buf, "%u %u mV\r\n", g_adc_buf[0], (g_adc_buf[1]*VDD_VALUE)/4095);
+	plen=fill_tcp_data(buf,plen,(const char*)tmp_compose_buf);
+	plen=fill_tcp_data_p(buf,plen,("<p>Provided by Cortex M board\r\n"));
 
-    plen=fill_tcp_data_p(buf,plen,(" <small><a href=\""));
-    plen=fill_tcp_data(buf,plen,baseurl);
-    plen=fill_tcp_data(buf,plen,password);
-    plen=fill_tcp_data_p(buf,plen,("\">[刷新]</a></small></p>\n<p><a href=\""));
-
-    plen=fill_tcp_data(buf,plen,baseurl);
-    plen=fill_tcp_data(buf,plen,password);
-    if (on_off)
-	{
-        plen=fill_tcp_data_p(buf,plen,("/0\">关闭DS1 LED</a><p>"));
-    }
-	else
-	{
-        plen=fill_tcp_data_p(buf,plen,("/1\">开启DS1 LED</a><p>"));
+	sprintf((char*)tmp_compose_buf, "<p>system Ticks:%u LED State:%u\r\n",					
+	SysTick->VAL,
+	g_led_state);
+	plen=fill_tcp_data(buf,plen,(const char*)tmp_compose_buf);		
+	
+	sprintf((char*)tmp_compose_buf, "<p>MAC Rev: 0x%02X\r\n", enc28j60getrev());
+	plen=fill_tcp_data(buf,plen,(const char*)tmp_compose_buf);				
+	
+	plen=fill_tcp_data_p(buf,plen,("\r\n<p>LED Status:"));
+	if (on_off){
+		plen=fill_tcp_data_p(buf,plen,("<font color=\"#00FF00\"> On</font>"));
+	}else{
+		plen=fill_tcp_data_p(buf,plen,("Off"));
 	}
 
-    plen=fill_tcp_data_p(buf,plen,("<center><hr><br>STM32F767 Nucleo BoardSTM32开发板 WEB 网页试验\n</center>"));
-    
-    return(plen);
+	plen=fill_tcp_data_p(buf,plen,("<a href=\""));
+	sprintf((char*)tmp_compose_buf, "http://%u.%u.%u.%u/", 
+	g_ip_addr[0],g_ip_addr[1],g_ip_addr[2],g_ip_addr[3]);
+	plen=fill_tcp_data(buf,plen, (const char*)tmp_compose_buf);
+	plen=fill_tcp_data_p(buf,plen,("\">[Refresh]</a>\r\n<p><a href=\""));
+
+	plen=fill_tcp_data(buf,plen, (const char*)tmp_compose_buf);
+	if (on_off){
+		plen=fill_tcp_data_p(buf,plen,("0\">LED Off</a><p>"));
+	}else{
+		plen=fill_tcp_data_p(buf,plen,("1\">LED On</a><p>"));
+	}
+
+	plen=fill_tcp_data_p(buf,plen,("<hr><p>F767 Board Simple Server\r\n"));
+
+	plen=fill_tcp_data_p(buf,plen,("</center>\r\n"));
+	plen=fill_tcp_data_p(buf,plen,("</body>\r\n"));
+	plen=fill_tcp_data_p(buf,plen,("</html>\r\n"));	
+	
+	return(plen);
 }
 
-int simple_server(void)
-{  
-    unsigned int plen,dat_p,i1=0,payloadlen=0;
-    unsigned char i=0;
+void protocol_init(void){
+	//using static configuration now
+}
+
+void server_loop(void){  
+	uint32_t plen,dat_p,i1=0,payloadlen=0;
 	char *buf1 = 0;
-    signed char cmd;
-    
-	init_ip_arp_udp_tcp(mymac,myip,mywwwport);
-    printf("MAC:0x%x,0x%x,0x%x,0x%x,0x%x,0x%x\n",mymac[0],mymac[1],mymac[2],mymac[3],mymac[4],mymac[5]);
-    printf("IP:%d.%d.%d.%d\n",myip[0],myip[1],myip[2],myip[3]);
-    printf("Port:%d\n",mywwwport);
+	signed char cmd;
+
+	printf("MAC:%02X,%02X,%02X,%02X,%02X,%02X\n",
+	g_mac_addr[0],g_mac_addr[1],g_mac_addr[2],g_mac_addr[3],g_mac_addr[4],g_mac_addr[5]);
+	printf("IP:%d.%d.%d.%d\n",
+	g_ip_addr[0],g_ip_addr[1],g_ip_addr[2],g_ip_addr[3]);
+	printf("Port:%d\n",HTTP_PORT);
 
 	//init the ethernet/ip layer:
-    while(1)
-    {
-        //判断是否有接收到有效的包
-        plen = enc28j60PacketReceive(BUFFER_SIZE, buf);
-        //如果收到有效的包，plen将为非0值。
-        if(plen==0)
-        {
-            continue; //没有收到有效的包就退出重新检测
-        }
-		//当收到目的地址为本机IP的ARP包时，发出ARP相应包
-        if(eth_type_is_arp_and_my_ip(buf,plen))
-        {
-			make_arp_answer_from_request(buf);
-            continue;
-        }
-        
-        //判断是否接收到目的地址为本机IP的合法的IP包
-        if(eth_type_is_ip_and_my_ip(buf,plen)==0) 
-        {
-            continue;
-        }
-        //如果收到ICMP包
-        if(buf[IP_PROTO_P]==IP_PROTO_ICMP_V && buf[ICMP_TYPE_P]==ICMP_TYPE_ECHOREQUEST_V)
-        {
+	while(true){
+		plen = enc28j60PacketReceive(BUFFER_SIZE, buf);
 
-            printf("\n\r收到主机[%d.%d.%d.%d]发送的ICMP包",buf[ETH_ARP_SRC_IP_P],buf[ETH_ARP_SRC_IP_P+1],
-                                                           buf[ETH_ARP_SRC_IP_P+2],buf[ETH_ARP_SRC_IP_P+3]);
+		if(plen==0){
+			continue; 
+		}
+
+		//Process ARP Request
+		if(eth_type_is_arp_and_my_ip(buf,plen)){
+			make_arp_answer_from_request(buf);
+			continue;
+		}
+
+		//Only Process IP Packet destinated at me
+		if(eth_type_is_ip_and_my_ip(buf,plen)==0) {
+			printf("$");
+			continue;
+		}
+		
+		//Process ICMP packet
+		if(buf[IP_PROTO_P]==IP_PROTO_ICMP_V && buf[ICMP_TYPE_P]==ICMP_TYPE_ECHOREQUEST_V){
+
+			printf("Rcvd ICMP from [%d.%d.%d.%d]",buf[ETH_ARP_SRC_IP_P],buf[ETH_ARP_SRC_IP_P+1],
+					buf[ETH_ARP_SRC_IP_P+2],buf[ETH_ARP_SRC_IP_P+3]);
 			make_echo_reply_from_request(buf, plen);
 			continue;
-        }
-        
-        //如果收到TCP包，且端口为80
-		if (buf[IP_PROTO_P]==IP_PROTO_TCP_V&&buf[TCP_DST_PORT_H_P]==0&&buf[TCP_DST_PORT_L_P]==mywwwport)
-		{
-		    printf("\n\rSTM32F767 Nucleo Board接收到TCP包，端口为80。");
-            if (buf[TCP_FLAGS_P] & TCP_FLAGS_SYN_V)
+		}
+
+		//Process TCP packet with port 80
+		if (buf[IP_PROTO_P]==IP_PROTO_TCP_V&&buf[TCP_DST_PORT_H_P]==0&&buf[TCP_DST_PORT_L_P]==HTTP_PORT){
+			printf("\n\rF767 Rcvd TCP[80] packet");
+			if (buf[TCP_FLAGS_P] & TCP_FLAGS_SYN_V)
 			{
-			    printf("包类型为SYN");
-                make_tcp_synack_from_syn(buf);
-                continue;
-            }
-	        if (buf[TCP_FLAGS_P] & TCP_FLAGS_ACK_V)
+				printf("Type SYN");
+				make_tcp_synack_from_syn(buf);
+				continue;
+			}
+			if (buf[TCP_FLAGS_P] & TCP_FLAGS_ACK_V)
 			{
-			    printf("包类型为ACK");
-	            init_len_info(buf); // init some data structures
-	            dat_p=get_tcp_data_pointer();
-	            if (dat_p==0)
+				printf("Type ACK");
+				init_len_info(buf); // init some data structures
+				dat_p=get_tcp_data_pointer();
+				if (dat_p==0)
 				{
-	                if (buf[TCP_FLAGS_P] & TCP_FLAGS_FIN_V)
+					if (buf[TCP_FLAGS_P] & TCP_FLAGS_FIN_V)
 					{
-	                    make_tcp_ack_from_any(buf);/*发送响应*/
-	                }
-	                // 发送一个没有数据的ACK响应，等待下一个包
-	                continue;
-	            }
-				if (strncmp("GET ",(char *)&(buf[dat_p]),4)!=0)
-				{
-			        // 如果是Telnet方式登录，返回如下提示信息
-			        plen=fill_tcp_data_p(buf,0,("STM32F767 Nucleo Board\r\n\n\rHTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>200 OK</h1>"));
-			        goto SENDTCP;
+						make_tcp_ack_from_any(buf);
+					}
+					continue;
 				}
-				if (strncmp("/ ",(char *)&(buf[dat_p+4]),2)==0)
-				{
-				    //如果是通过网页方式登录，输出如下提示信息
-			        plen=fill_tcp_data_p(buf,plen,("<p>Webserver: "));
-							uint8_t tmp_adc_read_buf[64];
-							sprintf((char*)tmp_adc_read_buf, "ADC:%u %f\n", g_ADCBuf[0], (g_ADCBuf[1]*3.3)/4095);
-			        plen=fill_tcp_data(buf,plen,(const char*)tmp_adc_read_buf);
-			        plen=fill_tcp_data_p(buf,plen,("password</p>"));
-			        goto SENDTCP;
+					// Process Telnet request
+				if (strncmp("GET ",(char *)&(buf[dat_p]),4)!=0){
+					plen=fill_tcp_data_p(buf,0,("F767\r\n\n\rHTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>200 OK</h1>"));
+					goto SENDTCP;
 				}
-                //分析网页控制的命令类型
-				cmd=analyse_get_url((char *)&(buf[dat_p+5]));
-				if (cmd==-1)
-				{
-			        plen=fill_tcp_data_p(buf,0,("HTTP/1.0 401 Unauthorized\r\nContent-Type: text/html\r\n\r\n<h1>401 Unauthorized</h1>"));
-			        goto SENDTCP;
+					//Process HTTP Request
+				if (strncmp("/ ",(char *)&(buf[dat_p+4]),2)==0){
+					
+					//Update Web Page Content
+					plen=print_webpage(buf, g_led_state);
+
+					goto SENDTCP;
 				}
-                //网页控制点亮LED灯DS1
-				if (cmd==1)
-				{
-                    LD2_ON();
-					i=1;
-				}
-                //网页控制熄灭LED灯DS1
-				if (cmd==0)
-				{
-                    LD2_OFF();
-					i=0;
-				}
-				//更新网页信息
-				plen=print_webpage(buf,(i));
 				
-			SENDTCP:
-				make_tcp_ack_from_any(buf); // send ack for http get
-				make_tcp_ack_with_data(buf,plen); // send data
+				//Analysis the command in the URL
+				cmd=analyse_get_url((char *)&(buf[dat_p+5]));
+				if (cmd==-1){
+					plen=fill_tcp_data_p(buf,0,("HTTP/1.0 401 Unauthorized\r\nContent-Type: text/html\r\n\r\n<h1>401 Unauthorized</h1>"));
+					goto SENDTCP;
+				}
+				if (cmd==1)	{
+					LD2_ON();
+					g_led_state=1;
+				}
+
+				if (cmd==0){
+					LD2_OFF();
+					g_led_state=0;
+				}
+
+				SENDTCP:
+				// send ack for http get
+				make_tcp_ack_from_any(buf); 
+				// send data
+				make_tcp_ack_with_data(buf,plen); 
 				continue;
 			}
 		}
 
-	    //UDP包，监听1200端口的UDP包
-		if (buf[IP_PROTO_P]==IP_PROTO_UDP_V&&buf[UDP_DST_PORT_H_P]==4&&buf[UDP_DST_PORT_L_P]==0xb0)
-		{
+		//Process UDP Packet with port TEST_UDP_PORT
+		if ( (buf[IP_PROTO_P]==IP_PROTO_UDP_V)&&
+			(buf[UDP_DST_PORT_H_P]==(TEST_UDP_PORT>>8))&&
+		(buf[UDP_DST_PORT_L_P]==(uint8_t)TEST_UDP_PORT) ) {
 			payloadlen=	  buf[UDP_LEN_H_P];
 			payloadlen=payloadlen<<8;
 			payloadlen=(payloadlen+buf[UDP_LEN_L_P])-UDP_HEADER_LEN;
-	
-            //ANSWER
-            for(i1=0; i1<payloadlen; i1++)
-            {         
-                buf1[i1]=buf[UDP_DATA_P+i1];
-            }
-			
-			//make_udp_reply_from_request(buf,str,strlen(str),myudpport);
-			make_udp_reply_from_request(buf,buf1,payloadlen,myudpport);
+
+			for(i1=0; i1<payloadlen; i1++){         
+				buf1[i1]=buf[UDP_DATA_P+i1];
+			}
+
+			make_udp_reply_from_request(buf,buf1,payloadlen, TEST_UDP_PORT);
 		}
 	}
 }

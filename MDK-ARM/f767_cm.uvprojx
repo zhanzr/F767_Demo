@@ -324,7 +324,7 @@
             <uThumb>0</uThumb>
             <uSurpInc>0</uSurpInc>
             <uC99>1</uC99>
-            <uGnu>0</uGnu>
+            <uGnu>1</uGnu>
             <useXO>0</useXO>
             <v6Lang>3</v6Lang>
             <v6LangP>3</v6LangP>
@@ -436,21 +436,6 @@
               <FileType>1</FileType>
               <FilePath>../Src/stm32f7xx_hal_msp.c</FilePath>
             </File>
-            <File>
-              <FileName>ENC28J60.C</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\ENC28J60.C</FilePath>
-            </File>
-            <File>
-              <FileName>ip_arp_udp_tcp.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\ip_arp_udp_tcp.c</FilePath>
-            </File>
-            <File>
-              <FileName>simple_server.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\simple_server.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -545,6 +530,26 @@
               <FileName>stm32f7xx_hal_i2c_ex.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32F7xx_HAL_Driver/Src/stm32f7xx_hal_i2c_ex.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>net_web</GroupName>
+          <Files>
+            <File>
+              <FileName>ENC28J60.C</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\ENC28J60.C</FilePath>
+            </File>
+            <File>
+              <FileName>ip_arp_udp_tcp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\ip_arp_udp_tcp.c</FilePath>
+            </File>
+            <File>
+              <FileName>simple_server.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\simple_server.c</FilePath>
             </File>
           </Files>
         </Group>

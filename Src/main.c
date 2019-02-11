@@ -81,8 +81,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile uint16_t g_ADCBuf[2];
-unsigned char mymac[6] = {0x32,0x12,0x35,0x11,0x01,0x51};
+volatile uint16_t g_adc_buf[2];
 
 void LD2_ON(void){
 	HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_SET);
@@ -92,27 +91,25 @@ void LD2_OFF(void){
 	HAL_GPIO_WritePin(GPIOB, LD2_Pin, GPIO_PIN_RESET);
 }
 
-extern void enc28j60Init(unsigned char* macaddr);
-extern int simple_server(void);
-
+extern void interface_init(void);
+extern void protocol_init(void);
+extern void server_loop(void);
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
-
-{
+int main(void){
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
 
   /* Enable I-Cache---------------------------------------------------------*/
-  SCB_EnableICache();
+//  SCB_EnableICache();
 
   /* Enable D-Cache---------------------------------------------------------*/
-  SCB_EnableDCache();
+//  SCB_EnableDCache();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -136,11 +133,13 @@ int main(void)
   MX_ADC1_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)g_ADCBuf, sizeof(g_ADCBuf)/sizeof(g_ADCBuf[0]));
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)g_adc_buf, sizeof(g_adc_buf)/sizeof(g_adc_buf[0]));
 	printf("Clock:%u Hz\n", SystemCoreClock);
-	  
-	enc28j60Init(mymac);	
-  simple_server();
+//	printf("MAC Rev: 0x%02X\n", enc28j60getrev());
+
+	interface_init();
+	protocol_init();
+	server_loop();
 
   /* USER CODE END 2 */
 
@@ -148,7 +147,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		printf("ADC:%u %f\n", g_ADCBuf[0], (g_ADCBuf[1]*3.3)/4095);
+		printf("ADC:%u %f\n", g_adc_buf[0], (g_adc_buf[1]*3.3)/4095);
 		HAL_Delay(10000);
     /* USER CODE END WHILE */
 

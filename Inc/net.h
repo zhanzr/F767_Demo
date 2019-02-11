@@ -1,35 +1,3 @@
-/*********************************************
- * vim:sw=8:ts=8:si:et
- * To use the above modeline in vim you must have "set modeline" in your .vimrc
- * Author: Guido Socher 
- * Copyright: GPL V2
- *
- * Based on the net.h file from the AVRlib library by Pascal Stang.
- * For AVRlib See http://www.procyonengineering.com/
- * Used with explicit permission of Pascal Stang.
- *
- * Chip type           : ATMEGA88 with ENC28J60
- *********************************************/
-
-
-
-/*********************************************
- * modified: 2007-08-08
- * Author  : awake
- * Copyright: GPL V2
- * http://www.icdev.com.cn/?2213/
- * Host chip: ADUC7026
-**********************************************/
-
-
-
-
-
-// notation: _P = position of a field
-//           _V = value of a field
-
-//@{
-
 #ifndef NET_H
 #define NET_H
 
@@ -130,6 +98,7 @@
 #define TCP_CHECKSUM_L_P 0x33
 #define TCP_OPTIONS_P 0x36
 //
-#endif
-//@}
 
+#define HTTP_PORT	80
+
+#endif
