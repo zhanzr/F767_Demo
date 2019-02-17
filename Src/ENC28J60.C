@@ -9,20 +9,113 @@ static uint32_t NextPacketPtr;
 
 extern SPI_HandleTypeDef hspi1;
 
+#if(0 != SOFT_SPI)
+	#warning use soft spi
+	
+//    PA5     ------> SPI1_SCK
+//    PA6     ------> SPI1_MISO
+//    PA7     ------> SPI1_MOSI 
+		
+#define ENC28_SCLK_Pin GPIO_PIN_5
+#define ENC28_SCLK_GPIO_Port GPIOA
+
+#define ENC28_MISO_Pin GPIO_PIN_6
+#define ENC28_MISO_GPIO_Port GPIOA
+
+#define ENC28_MOSI_Pin GPIO_PIN_7
+#define ENC28_MOSI_GPIO_Port GPIOA
+
+void SCLK_H(void){
+	HAL_GPIO_WritePin(ENC28_SCLK_GPIO_Port, ENC28_SCLK_Pin, GPIO_PIN_SET);
+}
+
+void SCLK_L(void){
+	HAL_GPIO_WritePin(ENC28_SCLK_GPIO_Port, ENC28_SCLK_Pin, GPIO_PIN_RESET);
+}
+
+void MOSI_H(void){
+	HAL_GPIO_WritePin(ENC28_MOSI_GPIO_Port, ENC28_MOSI_Pin, GPIO_PIN_SET);
+}
+
+void MOSI_L(void){
+	HAL_GPIO_WritePin(ENC28_MOSI_GPIO_Port, ENC28_MOSI_Pin, GPIO_PIN_RESET);
+}
+
+uint32_t MISO_STAT(void){
+		return HAL_GPIO_ReadPin(ENC28_MISO_GPIO_Port, ENC28_MISO_Pin);	
+}
+
+#define	BIT_DELAY	1
+static inline void bit_delay(uint32_t d){
+	for(uint32_t i=0; i<d; ++i){
+		__NOP();
+	}
+}
+
+static inline void spi_xfer(uint8_t *dout, uint8_t *din){
+	uint8_t tmpdin  = 0;
+	uint8_t tmpdout = *dout;
+
+	for(uint8_t j = 0; j < 8; j++) {
+		SCLK_L();
+		(tmpdout & 0x80)?MOSI_H():MOSI_L();
+		bit_delay(BIT_DELAY);
+		SCLK_H();
+		bit_delay(BIT_DELAY);
+		tmpdin  <<= 1;
+		tmpdin   |= MISO_STAT();
+		tmpdout <<= 1;
+	}
+
+	*din = tmpdin;
+
+	//SPI wants the clock left low for idle
+	SCLK_L();
+
+	return;
+}
+
+void spi_write(uint8_t* p_raw, uint16_t len){		
+	uint8_t dummy;
+	for(uint16_t n=0; n<len; ++n){
+		spi_xfer(p_raw+n, &dummy);
+	}
+	return;
+}
+
+void spi_read(uint8_t* p_buf, uint16_t len){	
+	uint8_t dummy = 0xff;
+
+	for(uint16_t n=0; n<len; ++n){
+			spi_xfer(&dummy, p_buf+n);
+	}
+	return;
+}
+	
+#else
+void spi_write(uint8_t* p_raw, uint16_t len){
+	HAL_SPI_Transmit(&hspi1, p_raw, len, len*10);
+}
+
+void spi_read(uint8_t* p_buf, uint16_t len){
+	HAL_SPI_Receive(&hspi1, p_buf, len, len*10);    
+}
+#endif	//(0 != SOFT_SPI)
+
 static uint8_t enc28j60ReadOp(uint8_t op, uint8_t address){
 	uint8_t dat;
 
 	ENC28J60_CSL();
 
 	dat = op | (address & ADDR_MASK);
-	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
+	spi_write(&dat, 1);
 	
 	dat = 0xff;
-	HAL_SPI_Receive(&hspi1, &dat, 1, 10);
+	spi_read(&dat, 1);
 
 	// skip dummy read if needed (for mac and mii, see datasheet page 29)
 	if(address & SPRD_MASK){
-		HAL_SPI_Receive(&hspi1, &dat, 1, 10);    
+		spi_read(&dat, 1);
 	}
 
 	ENC28J60_CSH();
@@ -35,11 +128,11 @@ static void enc28j60WriteOp(uint8_t op, uint8_t address, uint8_t data){
 	ENC28J60_CSL();
 
 	dat = op | (address & ADDR_MASK);
-	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
+	spi_write(&dat, 1);
 	
 	dat = data;
-	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
-
+	spi_write(&dat, 1);
+	
 	ENC28J60_CSH();
 }
 
@@ -49,9 +142,10 @@ static void enc28j60ReadBuffer(uint32_t len, uint8_t* buf){
 	ENC28J60_CSL();
 	
 	dat = ENC28J60_READ_BUF_MEM;
-	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
-
-	HAL_SPI_Receive(&hspi1, buf, len, len*10);    
+	spi_write(&dat, 1);
+	
+	spi_read(buf, len);
+	
 	*(buf+len)=0;
 
 	ENC28J60_CSH();
@@ -63,9 +157,9 @@ static void enc28j60WriteBuffer(uint32_t len, uint8_t* buf){
 	ENC28J60_CSL();
 
 	dat = ENC28J60_WRITE_BUF_MEM;
-	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
-
-	HAL_SPI_Transmit(&hspi1, buf, len, len*10);    
+	spi_write(&dat, 1);
+	
+	spi_write(buf, len);
 
 	ENC28J60_CSH();
 }

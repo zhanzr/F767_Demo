@@ -243,6 +243,9 @@
 #define ENC28J60_CSH()	HAL_GPIO_WritePin(ENC28_CS_GPIO_Port, ENC28_CS_Pin, GPIO_PIN_SET)
 #define ENC28J60_CSL()	HAL_GPIO_WritePin(ENC28_CS_GPIO_Port, ENC28_CS_Pin, GPIO_PIN_RESET)
 
+//#define SOFT_SPI	0
+#define SOFT_SPI	1
+
 void 	enc28j60Init(const uint8_t* macaddr);
 uint8_t enc28j60getrev(void);
 void 	enc28j60PacketSend(unsigned int len, uint8_t* packet);

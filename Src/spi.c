@@ -41,7 +41,7 @@
 #include "spi.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "enc28j60.h"
 /* USER CODE END 0 */
 
 SPI_HandleTypeDef hspi1;
@@ -51,7 +51,28 @@ DMA_HandleTypeDef hdma_spi1_tx;
 /* SPI1 init function */
 void MX_SPI1_Init(void)
 {
-
+#if(0 != SOFT_SPI)
+	#warning use soft spi
+	  GPIO_InitTypeDef GPIO_InitStruct = {0};
+		
+		__HAL_RCC_GPIOA_CLK_ENABLE();
+    /**SPI1 GPIO Configuration    
+    PA5     ------> SPI1_SCK
+    PA6     ------> SPI1_MISO
+    PA7     ------> SPI1_MOSI 
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);		
+		
+    GPIO_InitStruct.Pin = GPIO_PIN_6;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);				
+#else
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
@@ -71,7 +92,7 @@ void MX_SPI1_Init(void)
   {
     Error_Handler();
   }
-
+#endif	//(0 != SOFT_SPI)
 }
 
 void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
@@ -81,7 +102,9 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
   if(spiHandle->Instance==SPI1)
   {
   /* USER CODE BEGIN SPI1_MspInit 0 */
-
+#if(0 != SOFT_SPI)
+	#warning use soft spi
+#else
   /* USER CODE END SPI1_MspInit 0 */
     /* SPI1 clock enable */
     __HAL_RCC_SPI1_CLK_ENABLE();
@@ -137,7 +160,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     __HAL_LINKDMA(spiHandle,hdmatx,hdma_spi1_tx);
 
   /* USER CODE BEGIN SPI1_MspInit 1 */
-
+#endif	//(0 != SOFT_SPI)
   /* USER CODE END SPI1_MspInit 1 */
   }
 }

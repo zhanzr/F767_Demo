@@ -31,20 +31,17 @@ signed char analyse_get_url(char *str){
 
 	// find first "/"
 	// passw not longer than 9 char:
-	while(*str && i<10 && *str >',' && *str<'{')
-	{
-		if (*str=='/')
-		{
+	while(*str && i<10 && *str >',' && *str<'{'){
+		if (*str=='/'){
 			str++;
 			break;
 		}
 		i++;
 		str++;
 	}
-	if (*str < 0x3a && *str > 0x2f)
-	{
+	if (*str < 0x3a && *str > 0x2f){
 		// is a ASCII number, return it
-		return(*str-0x30);
+		return(*str-'0');
 	}
 	return(-2);
 }
@@ -70,9 +67,10 @@ uint32_t print_webpage(uint8_t *buf,uint8_t on_off)
 	plen=fill_tcp_data(buf,plen,(const char*)tmp_compose_buf);
 	plen=fill_tcp_data_p(buf,plen,("<p>Provided by Cortex M board\r\n"));
 
-	sprintf((char*)tmp_compose_buf, "<p>system Ticks:%u LED State:%u\r\n",					
+	sprintf((char*)tmp_compose_buf, "<p>system Ticks:%u LED State:%u, soft_spi:%u\r\n",					
 	SysTick->VAL,
-	g_led_state);
+	g_led_state,
+	SOFT_SPI);
 	plen=fill_tcp_data(buf,plen,(const char*)tmp_compose_buf);		
 	
 	sprintf((char*)tmp_compose_buf, "<p>MAC Rev: 0x%02X\r\n", enc28j60getrev());
