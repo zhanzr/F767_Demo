@@ -4,7 +4,7 @@
 #include "enc28j60.h"
 #include "spi.h"
 
-static uint8_t Enc28j60Bank;
+static uint8_t g_current_enc_bank;
 static uint32_t NextPacketPtr;
 
 extern SPI_HandleTypeDef hspi1;
@@ -15,15 +15,16 @@ static uint8_t enc28j60ReadOp(uint8_t op, uint8_t address){
 	ENC28J60_CSL();
 
 	dat = op | (address & ADDR_MASK);
-
 	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
+	
+	dat = 0xff;
 	HAL_SPI_Receive(&hspi1, &dat, 1, 10);
 
-	// do dummy read if needed (for mac and mii, see datasheet page 29)
-	if(address & 0x80){
+	// skip dummy read if needed (for mac and mii, see datasheet page 29)
+	if(address & SPRD_MASK){
 		HAL_SPI_Receive(&hspi1, &dat, 1, 10);    
 	}
-	// release CS
+
 	ENC28J60_CSH();
 	return dat;
 }
@@ -32,12 +33,13 @@ static void enc28j60WriteOp(uint8_t op, uint8_t address, uint8_t data){
 	uint8_t dat;
 
 	ENC28J60_CSL();
-	// issue write command
+
 	dat = op | (address & ADDR_MASK);
 	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
-	// write data
+	
 	dat = data;
 	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
+
 	ENC28J60_CSH();
 }
 
@@ -45,12 +47,11 @@ static void enc28j60ReadBuffer(uint32_t len, uint8_t* buf){
 	uint8_t dat;
 
 	ENC28J60_CSL();
-	// issue read command
+	
 	dat = ENC28J60_READ_BUF_MEM;
 	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
 
 	HAL_SPI_Receive(&hspi1, buf, len, len*10);    
-
 	*(buf+len)=0;
 
 	ENC28J60_CSH();
@@ -60,7 +61,7 @@ static void enc28j60WriteBuffer(uint32_t len, uint8_t* buf){
 	uint8_t dat;
 	
 	ENC28J60_CSL();
-	// issue write command
+
 	dat = ENC28J60_WRITE_BUF_MEM;
 	HAL_SPI_Transmit(&hspi1, &dat, 1, 10);
 
@@ -71,11 +72,10 @@ static void enc28j60WriteBuffer(uint32_t len, uint8_t* buf){
 
 static void enc28j60SetBank(uint8_t address){
 	// set the bank (if needed)
-	if((address & BANK_MASK) != Enc28j60Bank){
-		// set the bank
+	if((address & BANK_MASK) != g_current_enc_bank){
 		enc28j60WriteOp(ENC28J60_BIT_FIELD_CLR, ECON1, (ECON1_BSEL1|ECON1_BSEL0));
 		enc28j60WriteOp(ENC28J60_BIT_FIELD_SET, ECON1, (address & BANK_MASK)>>5);
-		Enc28j60Bank = (address & BANK_MASK);
+		g_current_enc_bank = (address & BANK_MASK);
 	}
 }
 
@@ -103,6 +103,24 @@ static void enc28j60PhyWrite(uint8_t address, uint32_t data){
 	while(enc28j60Read(MISTAT) & MISTAT_BUSY){
 		__NOP();
 	}
+}
+
+uint16_t enc28j60_phy_read(uint8_t address){
+	// Set the right address and start the register read operation
+	enc28j60Write(MIREGADR, address);
+	enc28j60Write(MICMD, MICMD_MIIRD);
+
+	// wait until the PHY read completes
+	while(enc28j60Read(MISTAT) & MISTAT_BUSY){
+		__NOP();
+	}
+
+	// reset reading bit
+	enc28j60Write(MICMD, 0x00);
+	
+	uint16_t dat16 = enc28j60Read(MIRDH);
+  uint8_t dat8 = enc28j60Read(MIRDL);
+	return (dat16<<8)|dat8;
 }
 
 static void enc28j60clkout(uint8_t clk){
@@ -198,6 +216,16 @@ void enc28j60Init(const uint8_t* macaddr){
 	enc28j60PhyWrite(PHLCON,0x0476);	
 
 	enc28j60clkout(2); 
+	
+	printf("MAC Rev: 0x%02X\n", enc28j60getrev());
+	printf("MAADR0: %02X\n", enc28j60Read(MAADR0));
+	printf("MAADR1: %02X\n", enc28j60Read(MAADR1));
+	printf("MAADR2: %02X\n", enc28j60Read(MAADR2));
+	printf("MAADR3: %02X\n", enc28j60Read(MAADR3));
+	printf("MAADR4: %02X\n", enc28j60Read(MAADR4));
+	printf("MAADR5: %02X\n", enc28j60Read(MAADR5));
+	printf("PHHID1: %04X\n", enc28j60_phy_read(PHHID1));
+	printf("PHHID2: %04X\n", enc28j60_phy_read(PHHID2));		
 }
 
 // read the revision of the chip:

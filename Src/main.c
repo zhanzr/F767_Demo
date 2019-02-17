@@ -135,9 +135,9 @@ int main(void){
   /* USER CODE BEGIN 2 */
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)g_adc_buf, sizeof(g_adc_buf)/sizeof(g_adc_buf[0]));
 	printf("Clock:%u Hz\n", SystemCoreClock);
-//	printf("MAC Rev: 0x%02X\n", enc28j60getrev());
 
 	interface_init();
+	
 	protocol_init();
 	server_loop();
 
@@ -148,7 +148,8 @@ int main(void){
   while (1)
   {
 		printf("ADC:%u %f\n", g_adc_buf[0], (g_adc_buf[1]*3.3)/4095);
-		HAL_Delay(10000);
+		printf("MAC Rev: 0x%02X\n", enc28j60getrev());
+		HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
