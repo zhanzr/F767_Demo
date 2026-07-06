@@ -1,0 +1,86 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: µVision V5.43.1.0
+Copyright (C) 2025 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: zzz user1
+asdfasdf
+User-based license: Keil MDK Community (non-commercial free of charge)
+Valid until: Jun 1 2033. Cached until: Jul 13 2026
+ 
+Tool Versions:
+Toolchain:       Keil MDK Community (non-commercial free of charge  Version: 5.43.0.0
+Toolchain Path:  D:\Keil_v5\ARM\ARMCLANG\Bin
+C Compiler:      ArmClang.exe V6.24
+Assembler:       Armasm.exe V6.24
+Linker/Locator:  ArmLink.exe V6.24
+Library Manager: ArmAr.exe V6.24
+Hex Converter:   FromElf.exe V6.24
+CPU DLL:         SARMCM3.DLL V5.43.0.0
+Dialog DLL:      DCM.DLL V1.17.5.0
+Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V3.3.1.0
+Dialog DLL:      TCM.DLL V1.56.6.0
+ 
+<h2>Project:</h2>
+D:\F767_Demo\MDK-ARM\F767_Demo.uvprojx
+Project File Date:  07/07/2026
+
+<h2>Output:</h2>
+*** Using Compiler 'V6.24', folder: 'D:\Keil_v5\ARM\ARMCLANG\Bin'
+Build target 'F767_Demo'
+assembling startup_stm32f767xx.s...
+compiling usart.c...
+compiling gpio.c...
+compiling usb_otg.c...
+compiling eth.c...
+linking...
+..\scatter\stm32f767_ac6.sct(22): warning: L6314W: No section matches pattern *.o(RAM_CODE).
+Program Size: Code=13708 RO-data=672 RW-data=344 ZI-data=14264  
+Finished: 0 information, 1 warning and 0 error messages.
+"F767_Demo\F767_Demo.axf" - 0 Error(s), 1 Warning(s).
+
+<h2>Software Packages used:</h2>
+
+Package Vendor: ARM
+                https://www.keil.com/pack/ARM.CMSIS.6.3.0.pack
+                ARM::CMSIS@6.3.0
+                CMSIS (Common Microcontroller Software Interface Standard)
+   * Component: CORE Version: 6.2.0
+
+Package Vendor: ARM
+                https://www.keil.com/pack/ARM.CMSIS-Compiler.2.3.0.pack
+                ARM::CMSIS-Compiler@2.3.0
+                CMSIS Compiler extensions for Arm Compiler, GCC, Clang, and IAR Compiler
+   * Component: CORE Version: 1.2.1
+   * Component: Custom Version: 1.1.0
+   * Component: STDOUT Version: 1.1.0
+
+Package Vendor: Keil
+                https://www.keil.com/pack/Keil.STM32F7xx_DFP.3.1.1.pack
+                Keil::STM32F7xx_DFP@3.1.1
+                STMicroelectronics STM32F7 Series Device Support
+
+<h2>Collection of Component include folders:</h2>
+  ./RTE/_F767_Demo
+  D:/Arm/Packs/ARM/CMSIS-Compiler/2.3.0/include
+  D:/Arm/Packs/ARM/CMSIS/6.3.0/CMSIS/Core/Include
+
+<h2>Collection of Component Files used:</h2>
+
+   * Component: ARM::CMSIS-Compiler:CORE@1.2.1
+      Source file:   source/core/armcc/retarget_io.c
+
+   * Component: ARM::CMSIS-Compiler:STDOUT:Custom@1.1.0
+      Source file:   template/stdio/stdout_user.c
+
+   * Component: ARM::CMSIS:CORE@6.2.0
+      Include file:  CMSIS/Core/Include/tz_context.h
+
+   * Component: CMSIS-Compiler:STDOUT(API)@1.1.0
+      Include file:  include/retarget_stdout.h
+Build Time Elapsed:  00:00:01
+</pre>
+</body>
+</html>

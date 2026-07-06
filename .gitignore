@@ -1,0 +1,6 @@
+*.d
+*.o
+*.axf
+*.dep
+*.lnp
+*.map
