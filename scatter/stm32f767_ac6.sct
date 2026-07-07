@@ -18,7 +18,6 @@
 #define	__GAP_INIT	0x100
 #define __GAP_HEAP_TOP_STACK_BASE	0x100
 #define __GAP_STACK_TOP_RW_BASE		0x100
-#define __NO_INIT_SIZE         0x40
 
 ; Cached via L1
 #define __FLASH_AXIM_BASE     0x8000000
@@ -42,6 +41,9 @@
 #define	__DTCM_S1_S2_RAM_BASE	0x20000000
 #define	__DTCM_S1_S2_RAM_SIZE	(__DTCM_SIZE + __SRAM1_SIZE + __SRAM2_SIZE)
 
+#define	__DTCM_S1_RAM_BASE	0x20000000
+#define	__DTCM_S1_RAM_SIZE	(__DTCM_SIZE + __SRAM1_SIZE)
+
 ; Backup ram, Only accessed from CPU
 #define __BKRAM_BASE  0x40023C00
 #define __BKRAM_SIZE  0x00000400
@@ -50,36 +52,80 @@
 #define __RO_BASE         __FLASH_ITCM_BASE
 #define __RO_SIZE         __FLASH_AXIM_SIZE
 
-; __DSRAM1_BASE for heap and stack
+; __DTCM_S1_RAM_BASE for heap and stack
 ; Low	-> High
-;|	Initial Gap	|	Heap	|	heap_stack gap	|	Stack	|	stack_rwzi gap	|	RW_ZI region 1 |	No_Init region	|
+;|	Initial Gap	|	Heap	|	heap_stack gap	|	Stack	|	stack_rwzi gap	|	RW_ZI region 1 |	No_Init region(if any)	|
 
-#define __HEAP_BASE			(AlignExpr(__DTCM_S1_S2_RAM_BASE + __GAP_INIT, 8))
+#define __HEAP_BASE			(AlignExpr(__DTCM_S1_RAM_BASE + __GAP_INIT, 8))
 #define __HEAP_TOP			(AlignExpr(__HEAP_BASE + __HEAP_SIZE, 8))
 #define __STACK_TOP			(AlignExpr(__HEAP_TOP + __GAP_HEAP_TOP_STACK_BASE + __STACK_SIZE, 8))
 #define __RWZI_BASE_1		(AlignExpr(__GAP_STACK_TOP_RW_BASE + __STACK_TOP, 8))
 
-#define __RWZI_SIZE_1			(AlignExpr(__DTCM_S1_S2_RAM_SIZE - __GAP_INIT - __HEAP_SIZE - __GAP_HEAP_TOP_STACK_BASE - __STACK_SIZE - __GAP_STACK_TOP_RW_BASE - __NO_INIT_SIZE, 8))
+#define __RWZI_SIZE_1			(AlignExpr(__DTCM_S1_RAM_SIZE - __GAP_INIT - __HEAP_SIZE - __GAP_HEAP_TOP_STACK_BASE - __STACK_SIZE - __GAP_STACK_TOP_RW_BASE, 8))
+
+; =============================================================
+;                 Ethernet DMA Descriptor Regions
+; =============================================================
+; Descriptors must be placed in SRAM2 at fixed addresses
+; - Must be contiguous physical memory
+; - Aligned to 32-byte boundary (hardware requirement)
+; - DMA can access SRAM2 without cache coherency issues
+#define __ETH_RX_DESC_BASE      __SRAM2_BASE
+#define __ETH_RX_DESC_SIZE      0x000000A0             
+#define __ETH_TX_DESC_BASE      (AlignExpr(__ETH_RX_DESC_BASE + __ETH_RX_DESC_SIZE, 8))
+#define __ETH_TX_DESC_SIZE      0x000000A0            
+#define __ETH_DESC_TOTAL_SIZE   (__ETH_RX_DESC_SIZE + __ETH_TX_DESC_SIZE)
+
+; Remaining SRAM2 after descriptors (for user DMA buffers if needed)
+#define __SRAM2_REMAINING_BASE  (__ETH_TX_DESC_BASE + __ETH_TX_DESC_SIZE)
+#define __SRAM2_REMAINING_SIZE  (__SRAM2_SIZE - __ETH_DESC_TOTAL_SIZE)
 
 LR_ROM __RO_BASE __RO_SIZE  {
-  ER_ROM __RO_BASE __RO_SIZE  {
-   *.o (RESET, +First)
-   *(InRoot$$Sections)
-   .ANY (+RO)
-   .ANY (+XO)
-  }
+	ER_ROM __RO_BASE __RO_SIZE  {
+		*.o (RESET, +First)
+		*(InRoot$$Sections)
+		.ANY (+RO)
+		.ANY (+XO)
+	}
 
-  ER_PSRAM __ITCM_BASE __ITCM_SIZE {
-    *.o (RAM_CODE)
-  }
+	; ---------------------------------------------------------
+	; ITCM: Critical code that must execute with deterministic timing
+	; This region is mapped at 0x00000000 (ITCM address space)
+	; ---------------------------------------------------------
+	ER_PSRAM __ITCM_BASE __ITCM_SIZE {
+		*.o (RAM_CODE)
+	}
+
+	ARM_LIB_STACK __STACK_TOP EMPTY -__STACK_SIZE {
+	}
+
+	ARM_LIB_HEAP  __HEAP_BASE EMPTY  __HEAP_SIZE {
+	}
+
+	RW_ZI_REGION __RWZI_BASE_1 (__RWZI_SIZE_1)  {
+		.ANY (+RW +ZI)
+	}
   
-  ARM_LIB_STACK __STACK_TOP EMPTY -__STACK_SIZE {
-  }
+	; ---------------------------------------------------------
+	; ETHERNET: DMA Descriptor Tables in SRAM2 (FIXED ADDRESSES)
+	; Hardware requires these at specific physical addresses
+	; ---------------------------------------------------------
+	ER_ETH_RX_DESC __ETH_RX_DESC_BASE (__ETH_RX_DESC_SIZE) {
+		*(.RxDescripSection)                ; ETH Rx descriptor table
+	}
 
-  ARM_LIB_HEAP  __HEAP_BASE EMPTY  __HEAP_SIZE {
-  }
-
-  RW_ZI_REGION __RWZI_BASE_1 (__RWZI_SIZE_1)  {
-   .ANY (+RW +ZI)
-  }
+	ER_ETH_TX_DESC __ETH_TX_DESC_BASE (__ETH_TX_DESC_SIZE) {
+		*(.TxDescripSection)                ; ETH Tx descriptor table
+	}
+	
+	; ---------------------------------------------------------
+    ; OPTIONAL: Remaining SRAM2 for user data
+    ; Use this for buffers that MUST be in SRAM2 (e.g., DMA buffers)
+    ; Mark variables with: __attribute__((section(".SRAM2_data")))
+    ; ---------------------------------------------------------
+    SRAM2_REMAINING __SRAM2_REMAINING_BASE (__SRAM2_REMAINING_SIZE) {
+        *(.SRAM2_data)                      ; Explicit SRAM2 data
+        ; Uncomment below to allow any data to use remaining SRAM2
+		;        .ANY (+RW +ZI)                   ; (NOT recommended - can conflict with DMA)
+    }	
 }

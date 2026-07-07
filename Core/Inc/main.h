@@ -31,6 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stm32f7xx_nucleo_144.h"
 
 /* USER CODE END Includes */
 
@@ -58,6 +59,7 @@ void Error_Handler(void);
 
 /* Private defines -----------------------------------------------------------*/
 #define SERIAL_BAUDRATE 921600
+#define ADC_CHAN_NO 2
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define MCO_Pin GPIO_PIN_0
@@ -108,9 +110,6 @@ void Error_Handler(void);
 #define LD2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-#ifndef configTICK_RATE_HZ
-#define	configTICK_RATE_HZ	1000
-#endif
 
 // Helper macro to convert numeric value to string
 #define STRINGIFY(x) #x
@@ -123,6 +122,26 @@ void Error_Handler(void);
 #else
     #define COMPILER_NAME "Unknown Compiler"
 #endif
+
+#define USE_DHCP       /* enable DHCP, if disabled static address is used*/
+ 
+/*Static IP ADDRESS*/
+#define IP_ADDR0   192
+#define IP_ADDR1   168
+#define IP_ADDR2   100
+#define IP_ADDR3   13
+
+/*NETMASK*/
+#define NETMASK_ADDR0   255
+#define NETMASK_ADDR1   255
+#define NETMASK_ADDR2   255
+#define NETMASK_ADDR3   0
+
+/*Gateway Address*/
+#define GW_ADDR0   192
+#define GW_ADDR1   168
+#define GW_ADDR2   100
+#define GW_ADDR3   1
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

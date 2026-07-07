@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "dma.h"
 #include "eth.h"
 #include "usart.h"
 #include "usb_otg.h"
@@ -27,8 +29,12 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 
-#include "custom_def.h"
-#include "core_portme.h"
+#include "cmsis_os.h"
+#include "ethernetif.h"
+#include "lwip/netif.h"
+#include "lwip/tcpip.h"
+#include "app_ethernet.h"
+#include "httpserver-netconn.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,6 +67,16 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+struct netif gnetif; /* network interface structure */
+
+/* Private function prototypes -----------------------------------------------*/
+static void StartThread(void const * argument);
+static void BSP_Config(void);
+static void Netif_Config(void);
+static void CPU_CACHE_Enable(void);
+
+volatile uint16_t g_ADCBuf[2];
+
 int stdout_putchar (int ch) {
 	HAL_UART_Transmit(&huart3, (uint8_t*)&ch, 1, 0xFFFF);
 	return ch;
@@ -70,19 +86,14 @@ extern uint32_t __Vectors;
 extern uint32_t __Vectors_End;
 extern uint32_t __Vectors_Size;
 
-extern void portable_init(core_portable *p, int *argc, char *argv[]);
-extern void portable_fini(core_portable *p);
-
 void user_loop(void) {
 		printf("CC: %s\n", COMPILER_NAME);		
 		printf("%u Hz, %08X, CM:%d, FPU_USED:%d\n",
 				SystemCoreClock, SCB->CPUID,
 				__CORTEX_M, __FPU_USED);
-		printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(portable_init), (uint32_t)(portable_fini));		
+		printf("vector: %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&SystemCoreClock));		
 		HAL_Delay(60 * configTICK_RATE_HZ);
 }
-
-int original_main(void)
 
 /* USER CODE END 0 */
 
@@ -90,7 +101,7 @@ int original_main(void)
   * @brief  The application entry point.
   * @retval int
   */
-//int main(void)
+int main(void)
 {
 
   /* USER CODE BEGIN 1 */
@@ -106,7 +117,8 @@ int original_main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  /* Enable the CPU Cache */
+  CPU_CACHE_Enable();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -118,22 +130,41 @@ int original_main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ETH_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+	
+	  BSP_Config();
+
+  /* Init thread */
+#if defined(__GNUC__)
+  osThreadDef(Start, StartThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE * 5);
+#else
+  osThreadDef(Start, StartThread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE * 2);
+#endif
+  
+  osThreadCreate (osThread(Start), NULL);
+	
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)g_ADCBuf, sizeof(g_ADCBuf)/sizeof(g_ADCBuf[0]));
+
 	printf("CC: %s\n", COMPILER_NAME);		
 	printf("%u Hz, %08X, CM:%d, FPU_USED:%d\n",
 			SystemCoreClock, SCB->CPUID,
 			__CORTEX_M, __FPU_USED);
-	printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(portable_init), (uint32_t)(portable_fini));		
+		printf("vector: %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&SystemCoreClock));		
 
+  /* Start scheduler */
+	vTaskStartScheduler();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (0)
+  while (1)
   {
+		user_loop();		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -199,36 +230,211 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+/**
+  * @brief  Start Thread 
+  * @param  argument not used
+  * @retval None
+  */
+static void StartThread(void const * argument)
+{ 
+  /* Create tcp_ip stack thread */
+  tcpip_init(NULL, NULL);
+  
+  /* Initialize the LwIP stack */
+  Netif_Config();
+  
+  /* Initialize webserver demo */
+  http_server_netconn_init();
+
+  for( ;; )
+  {
+    /* Delete the Init Thread */ 
+    osThreadTerminate(NULL);
+  }
+}
+
+/**
+  * @brief  Initializes the STM324x9I-EVAL's LCD and LEDs resources.
+  * @param  None
+  * @retval None
+  */
+static void BSP_Config(void)
+{
+  /* Configure LED1 and LED2 */
+  BSP_LED_Init(LED1);
+  BSP_LED_Init(LED2);
+}
+
+/**
+  * @brief  Initializes the lwIP stack
+  * @param  None
+  * @retval None
+  */
+static void Netif_Config(void)
+{
+  ip_addr_t ipaddr;
+  ip_addr_t netmask;
+  ip_addr_t gw;
+
+#if LWIP_DHCP
+  ip_addr_set_zero_ip4(&ipaddr);
+  ip_addr_set_zero_ip4(&netmask);
+  ip_addr_set_zero_ip4(&gw);
+#else
+  IP_ADDR4(&ipaddr,IP_ADDR0,IP_ADDR1,IP_ADDR2,IP_ADDR3);
+  IP_ADDR4(&netmask,NETMASK_ADDR0,NETMASK_ADDR1,NETMASK_ADDR2,NETMASK_ADDR3);
+  IP_ADDR4(&gw,GW_ADDR0,GW_ADDR1,GW_ADDR2,GW_ADDR3);
+#endif /* LWIP_DHCP */
+
+  /* add the network interface */
+  netif_add(&gnetif, &ipaddr, &netmask, &gw, NULL, &ethernetif_init, &tcpip_input);
+
+  /*  Registers the default network interface. */
+  netif_set_default(&gnetif);
+
+  ethernet_link_status_updated(&gnetif);
+
+#if LWIP_NETIF_LINK_CALLBACK
+  netif_set_link_callback(&gnetif, ethernet_link_status_updated);
+
+  osThreadDef(EthLink, ethernet_link_thread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE *2);
+  osThreadCreate (osThread(EthLink), &gnetif);
+#endif
+
+#if LWIP_DHCP
+  /* Start DHCPClient */
+  osThreadDef(DHCP, DHCP_Thread, osPriorityBelowNormal, 0, configMINIMAL_STACK_SIZE * 2);
+  osThreadCreate (osThread(DHCP), &gnetif);
+#endif
+}
+
+
+/**
+  * @brief  Configure the MPU attributes .
+  * @param  None
+  * @retval None
+  */
+static void MPU_Config(void)
+{
+  MPU_Region_InitTypeDef MPU_InitStruct;
+
+  /* Disable the MPU */
+  HAL_MPU_Disable();
+
+  /* Configure the MPU as Strongly ordered for not defined regions */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress = 0x00;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_4GB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_NO_ACCESS;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x87;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /* Configure the MPU as Normal Non Cacheable for Ethernet Buffers in the SRAM2 */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress = 0x20078000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_16KB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER1;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL1;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+  /* Configure the MPU as Device for Ethernet Descriptors in the SRAM2 */
+  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.BaseAddress = 0x2007C000;
+  MPU_InitStruct.Size = MPU_REGION_SIZE_1KB;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_BUFFERABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+  MPU_InitStruct.Number = MPU_REGION_NUMBER2;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+
+  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+  
+  /* Enable the MPU */
+  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+}
+
+/**
+  * @brief  CPU L1-Cache enable.
+  * @param  None
+  * @retval None
+  */
+static void CPU_CACHE_Enable(void)
+{
+  /* Enable I-Cache */
+  SCB_EnableICache();
+
+  /* Enable D-Cache */
+  SCB_EnableDCache();
+}
 
 /* USER CODE END 4 */
 
  /* MPU Configuration */
 
-void MPU_Config(void)
-{
-  MPU_Region_InitTypeDef MPU_InitStruct = {0};
+//void MPU_Config(void)
+//{
+//  MPU_Region_InitTypeDef MPU_InitStruct = {0};
 
-  /* Disables the MPU */
-  HAL_MPU_Disable();
+//  /* Disables the MPU */
+//  HAL_MPU_Disable();
 
-  /** Initializes and configures the Region and the memory to be protected
+//  /** Initializes and configures the Region and the memory to be protected
+//  */
+//  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+//  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
+//  MPU_InitStruct.BaseAddress = 0x0;
+//  MPU_InitStruct.Size = MPU_REGION_SIZE_4GB;
+//  MPU_InitStruct.SubRegionDisable = 0x87;
+//  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+//  MPU_InitStruct.AccessPermission = MPU_REGION_NO_ACCESS;
+//  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
+//  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
+//  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
+//  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+
+//  HAL_MPU_ConfigRegion(&MPU_InitStruct);
+//  /* Enables the MPU */
+//  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+
+//}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM14 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
   */
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
-  MPU_InitStruct.BaseAddress = 0x0;
-  MPU_InitStruct.Size = MPU_REGION_SIZE_4GB;
-  MPU_InitStruct.SubRegionDisable = 0x87;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_NO_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_DISABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_NOT_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
 
-  HAL_MPU_ConfigRegion(&MPU_InitStruct);
-  /* Enables the MPU */
-  HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM14)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
 
+  /* USER CODE END Callback 1 */
 }
 
 /**

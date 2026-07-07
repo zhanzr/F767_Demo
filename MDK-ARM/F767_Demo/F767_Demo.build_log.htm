@@ -8,7 +8,7 @@ Copyright (C) 2025 ARM Ltd and ARM Germany GmbH. All rights reserved.
 License Information: zzz user1
 asdfasdf
 User-based license: Keil MDK Community (non-commercial free of charge)
-Valid until: Jun 1 2033. Cached until: Jul 13 2026
+Valid until: Jun 1 2033. Cached until: Jul 14 2026
  
 Tool Versions:
 Toolchain:       Keil MDK Community (non-commercial free of charge  Version: 5.43.0.0
@@ -25,16 +25,27 @@ Dialog DLL:      TCM.DLL V1.56.6.0
  
 <h2>Project:</h2>
 D:\F767_Demo\MDK-ARM\F767_Demo.uvprojx
-Project File Date:  07/07/2026
+Project File Date:  07/08/2026
 
 <h2>Output:</h2>
 *** Using Compiler 'V6.24', folder: 'D:\Keil_v5\ARM\ARMCLANG\Bin'
 Build target 'F767_Demo'
+../User/httpserver-netconn.c(309): warning: format string is not a string literal (potentially insecure) [-Wformat-security]
+  309 |         printf(adc_str);
+      |                ^~~~~~~
+../User/httpserver-netconn.c(309): note: treat the string as an argument to avoid this
+  309 |         printf(adc_str);
+      |                ^
+      |                "%s", 
+1 warning generated.
+compiling httpserver-netconn.c...
+compiling main.c...
 linking...
-..\scatter\stm32f767_ac6.sct(35): warning: L6314W: No section matches pattern *.o(RAM_CODE).
-Program Size: Code=36014 RO-data=2226 RW-data=344 ZI-data=14224  
-Finished: 0 information, 1 warning and 0 error messages.
-"F767_Demo\F767_Demo.axf" - 0 Error(s), 1 Warning(s).
+..\scatter\stm32f767_ac6.sct(56): warning: L6314W: No section matches pattern *.o(RAM_CODE).
+..\scatter\stm32f767_ac6.sct(87): warning: L6314W: No section matches pattern *(.SRAM2_data).
+Program Size: Code=78624 RO-data=42880 RW-data=388 ZI-data=72588  
+Finished: 0 information, 2 warning and 0 error messages.
+"F767_Demo\F767_Demo.axf" - 0 Error(s), 3 Warning(s).
 
 <h2>Software Packages used:</h2>
 
