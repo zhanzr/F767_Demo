@@ -26,6 +26,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+
+#include "custom_def.h"
+#include "dhry.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -66,6 +69,8 @@ int stdout_putchar (int ch) {
 extern uint32_t __Vectors;
 extern uint32_t __Vectors_End;
 extern uint32_t __Vectors_Size;
+
+extern void Proc_5 (void);
 
 /* USER CODE END 0 */
 
@@ -109,14 +114,22 @@ int main(void)
 	printf("%u Hz, %08X, CM:%d, FPU_USED:%d\n",
 			SystemCoreClock, SCB->CPUID,
 			__CORTEX_M, __FPU_USED);
-	printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(main), (uint32_t)(stdout_putchar));
+	printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(Proc_5), (uint32_t)(stdout_putchar));
 
+  dhry_main(SystemCoreClock);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		printf("CC: %s\n", COMPILER_NAME);		
+		printf("%u Hz, %08X, CM:%d, FPU_USED:%d\n",
+				SystemCoreClock, SCB->CPUID,
+				__CORTEX_M, __FPU_USED);
+		printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(Proc_5), (uint32_t)(stdout_putchar));		
+		HAL_Delay(60 * configTICK_RATE_HZ);
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
