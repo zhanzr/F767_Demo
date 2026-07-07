@@ -7,13 +7,16 @@
 */ 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include "coremark.h"
+#include "custom_def.h"
+#include "utils.h"
 
-#include "main.h"
 
-extern int original_main(void);
-extern volatile uint16_t g_ADCBuf[2];
+extern void original_main(void);
+extern volatile uint32_t g_Ticks;
+extern void user_loop(void);
+
+//#pragma clang section text="RAM_CODE"
 
 #if VALIDATION_RUN
 	volatile ee_s32 seed1_volatile=0x3415;
@@ -43,13 +46,12 @@ extern volatile uint16_t g_ADCBuf[2];
 	Use lower values to increase resolution, but make sure that overflow does not occur.
 	If there are issues with the return value overflowing, increase this value.
 	*/
-#define NSECS_PER_SEC HZ
 #define CORETIMETYPE clock_t 
 #define GETMYTIME(_t) (*_t=HAL_GetTick())
 #define MYTIMEDIFF(fin,ini) ((fin)-(ini))
 #define TIMER_RES_DIVIDER 1
 #define SAMPLE_TIME_IMPLEMENTATION 1
-#define EE_TICKS_PER_SEC (NSECS_PER_SEC / TIMER_RES_DIVIDER)
+#define EE_TICKS_PER_SEC (configTICK_RATE_HZ / TIMER_RES_DIVIDER)
 
 /** Define Host specific (POSIX), or target specific global time variables. */
 static CORETIMETYPE start_time_val, stop_time_val;
@@ -119,15 +121,11 @@ void portable_init(core_portable *p, int *argc, char *argv[])
 */
 void portable_fini(core_portable *p)
 {
-	volatile uint32_t tmpTick;
-	volatile uint32_t deltaTick;
-
 	p->portable_id=0;
-	
-  while (1)
-  {
-		printf("ADC:%u %f\n", g_ADCBuf[0], (g_ADCBuf[1]*3.3)/4095);
-		HAL_Delay(10000);
-  }
+	while (1) {
+		user_loop();
+	}
 }
+
+//#pragma clang section text="" // Reset back to default flash execution
 

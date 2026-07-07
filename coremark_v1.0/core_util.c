@@ -17,6 +17,9 @@ EEMBC
 El Dorado Hills, CA, 95762 
 */ 
 #include "coremark.h"
+
+//#pragma clang section text="RAM_CODE"
+
 /* Function: get_seed
 	Get a values that cannot be determined at compile time.
 
@@ -208,3 +211,5 @@ ee_u8 check_data_types() {
 	}
 	return retval;
 }
+
+//#pragma clang section text="" // Reset back to default flash execution

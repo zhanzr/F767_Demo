@@ -17,6 +17,9 @@ EEMBC
 El Dorado Hills, CA, 95762 
 */ 
 #include "coremark.h"
+
+//#pragma clang section text="RAM_CODE"
+
 /*
 Topic: Description
 	Matrix manipulation benchmark
@@ -306,3 +309,5 @@ void matrix_mul_matrix_bitextract(ee_u32 N, MATRES *C, MATDAT *A, MATDAT *B) {
 		}
 	}
 }
+
+//#pragma clang section text="" // Reset back to default flash execution

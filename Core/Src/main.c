@@ -28,7 +28,7 @@
 #include <stdio.h>
 
 #include "custom_def.h"
-#include "dhry.h"
+#include "core_portme.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -70,7 +70,19 @@ extern uint32_t __Vectors;
 extern uint32_t __Vectors_End;
 extern uint32_t __Vectors_Size;
 
-extern void Proc_5 (void);
+extern void portable_init(core_portable *p, int *argc, char *argv[]);
+extern void portable_fini(core_portable *p);
+
+void user_loop(void) {
+		printf("CC: %s\n", COMPILER_NAME);		
+		printf("%u Hz, %08X, CM:%d, FPU_USED:%d\n",
+				SystemCoreClock, SCB->CPUID,
+				__CORTEX_M, __FPU_USED);
+		printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(portable_init), (uint32_t)(portable_fini));		
+		HAL_Delay(60 * configTICK_RATE_HZ);
+}
+
+int original_main(void)
 
 /* USER CODE END 0 */
 
@@ -78,7 +90,7 @@ extern void Proc_5 (void);
   * @brief  The application entry point.
   * @retval int
   */
-int main(void)
+//int main(void)
 {
 
   /* USER CODE BEGIN 1 */
@@ -114,22 +126,14 @@ int main(void)
 	printf("%u Hz, %08X, CM:%d, FPU_USED:%d\n",
 			SystemCoreClock, SCB->CPUID,
 			__CORTEX_M, __FPU_USED);
-	printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(Proc_5), (uint32_t)(stdout_putchar));
+	printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(portable_init), (uint32_t)(portable_fini));		
 
-  dhry_main(SystemCoreClock);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+  while (0)
   {
-		printf("CC: %s\n", COMPILER_NAME);		
-		printf("%u Hz, %08X, CM:%d, FPU_USED:%d\n",
-				SystemCoreClock, SCB->CPUID,
-				__CORTEX_M, __FPU_USED);
-		printf("vector: %08X %08X %08X %08X %08X\n", (uint32_t)(&__Vectors), (uint32_t)(&__Vectors_End), (uint32_t)(&__Vectors_Size), (uint32_t)(Proc_5), (uint32_t)(stdout_putchar));		
-		HAL_Delay(60 * configTICK_RATE_HZ);
-		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

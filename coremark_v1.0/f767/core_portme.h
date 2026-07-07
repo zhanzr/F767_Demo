@@ -1,17 +1,14 @@
 /* File : core_portme.h */
 
 /*
-	Author : Zhan Zongru(zhanzr@foxmail.com)
-	Legal : BSD License
+	Author : Shay Gal-On, EEMBC
+	Legal : TODO!
 */ 
 /* Topic : Description
 	This file contains configuration constants required to execute on different platforms
 */
 #ifndef CORE_PORTME_H
 #define CORE_PORTME_H
-
-#define ITERATIONS	20000
-#define CLOCKS_PER_SEC	1000
 /************************/
 /* Data types and settings */
 /************************/
@@ -33,7 +30,7 @@
 	and implementation of functions thereof.
 */
 #ifndef USE_CLOCK
-#define USE_CLOCK 0
+#define USE_CLOCK 1
 #endif
 /* Configuration : HAS_STDIO
 	Define to 1 if the platform has stdio.h.
@@ -51,6 +48,11 @@
 /* Configuration : CORE_TICKS
 	Define type of return from the timing functions.
  */
+#include <stdint.h>
+
+#define	FLAGS_STR	"-xc -std=c11 --target=arm-arm-none-eabi -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard -c -fno-rtti -flto -funsigned-char -fshort-enums -fshort-wchar"
+#define	ITERATIONS	20000
+
 #include <time.h>
 typedef clock_t CORE_TICKS;
 
@@ -61,12 +63,13 @@ typedef clock_t CORE_TICKS;
  #ifdef __GNUC__
  #define COMPILER_VERSION "GCC"__VERSION__
  #else
- #define COMPILER_VERSION __ARMCC_VERSION
+ #define COMPILER_VERSION "Please put compiler version here (e.g. gcc 4.1)"
  #endif
 #endif
 #ifndef COMPILER_FLAGS 
- #define COMPILER_FLAGS "--c99 -c --cpu Cortex-M7.fp.sp -D__MICROLIB -g -O3 -Otime --apcs=interwork --split_sections -D_RTE_ -DSTM32F767xx -DUSE_HAL_DRIVER" /* "Please put compiler flags here (e.g. -o3)" */
+ #define COMPILER_FLAGS FLAGS_STR /* "Please put compiler flags here (e.g. -o3)" */
 #endif
+
 #ifndef MEM_LOCATION 
  #define MEM_LOCATION "STACK"
 #endif
@@ -80,7 +83,7 @@ typedef clock_t CORE_TICKS;
 typedef signed short ee_s16;
 typedef unsigned short ee_u16;
 typedef signed int ee_s32;
-typedef float ee_f32;
+typedef double ee_f32;
 typedef unsigned char ee_u8;
 typedef unsigned int ee_u32;
 typedef ee_u32 ee_ptr_int;

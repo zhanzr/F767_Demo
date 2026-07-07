@@ -17,6 +17,9 @@ EEMBC
 El Dorado Hills, CA, 95762 
 */ 
 #include "coremark.h"
+
+//#pragma clang section text="RAM_CODE"
+
 /* local functions */
 enum CORE_STATE core_state_transition( ee_u8 **instr , ee_u32 *transition_count);
 
@@ -275,3 +278,5 @@ enum CORE_STATE core_state_transition( ee_u8 **instr , ee_u32 *transition_count)
 	*instr=str;
 	return state;
 }
+
+//#pragma clang section text="" // Reset back to default flash execution

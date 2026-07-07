@@ -18,6 +18,9 @@ El Dorado Hills, CA, 95762
 */ 
 
 #include "coremark.h"
+
+//#pragma clang section text="RAM_CODE"
+
 /*
 Topic: Description
 	Benchmark using a linked list.
@@ -494,3 +497,6 @@ list_head *core_list_mergesort(list_head *list, list_cmp cmp, core_results *res)
 	return list;
 #endif
 }
+
+
+//#pragma clang section text="" // Reset back to default flash execution
